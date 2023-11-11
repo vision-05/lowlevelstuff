@@ -1,0 +1,15 @@
+What we need to know:
+file size [16 bits]
+the characters, separated by line breaks
+
+What this means:
+to read in file, we need a parser
+parser has to read in enough segments to encompass whole file
+then has to loop through the file, printing to terminal and converting newline to enter
+
+keystrokes now have to be saved to a memory heap
+Very bad practice but we'll just choose a random offset and because this is the bootloader
+we can assume this is safe to do
+
+File will have to live at the end of the binary? will have to figure this out
+To safely write we will need to know binary size
