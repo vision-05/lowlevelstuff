@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <limine.h>
 #include "font.h"
+#include "gdt.h"
+#include "idt.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(5);
@@ -172,9 +174,11 @@ unsigned char kbd_us[128] = {
 	0, 0, 0, 0, 0, 0
 };
 
-
-
 void kmain(void) {
+	init_gdt();
+	gdt_reload();
+	init_idt();
+	asm volatile("int $0x0D");
 	int x = 0;
 	int y = 0;
 	if(LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {

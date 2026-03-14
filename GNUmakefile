@@ -110,8 +110,8 @@ obj/%.S.o: %.S GNUmakefile
 	mkdir -p "$(dir $@)"
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-obj/%.asm.o: %.asm GNUmakefile
-	mkdir -p "$(dir $@)"
+obj/src/%.asm.o: src/%.asm GNUmakefile
+	@mkdir -p "$(dir $@)"
 	nasm $(NASMFLAGS) $< -o $@
 
 .PHONY: clean
