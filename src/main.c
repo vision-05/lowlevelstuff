@@ -102,7 +102,16 @@ void draw_char(psf2_header_t *font, char c, int x, int y, uint32_t fg, uint32_t 
 	}
 }
 
-void kprintf(char* str, psf2_header_t *font, struct limine_framebuffer *framebuffer, uint8_t *x, uint8_t *y) {
+void print_cursor(psf2_header_t *font, struct limine_framebuffer *framebuffer, int *x, int *y) {
+	for(uint32_t cy = font->height - 4; cy < font->height; ++cy) {
+		for(uint32_t cx = 0; cx < font->width; ++cx) {
+			volatile uint32_t *pixel = (uint32_t*)((uint8_t*)framebuffer->address + (*y+cy)*framebuffer->pitch + (*x+cx)*4);
+			*pixel = 0xff0000;
+		}
+	}
+}
+
+void kprintf(char* str, psf2_header_t *font, struct limine_framebuffer *framebuffer, int *x, int *y) {
 	char* it = str;
 	while(*it) {
 		if(*it == '\n') {
@@ -112,19 +121,46 @@ void kprintf(char* str, psf2_header_t *font, struct limine_framebuffer *framebuf
 		if(*it == '\r') {
 			continue;
 		}
+		if(*it == '\b') {
+			*x -= font->width;
+			*it = ' ';
+			draw_char(font, *it, *x, *y, 0x0000ff, 0x00ff00, framebuffer);
+			*x -= font->width;
+			print_cursor(font, framebuffer, x, y);
+			continue;
+		}
 		draw_char(font, *it, *x, *y, 0x0000ff, 0x00ff00, framebuffer);
 		(*x) += font->width;
-		if (*x > 100) {
+		if (*x > 1000) {
 			*x = 0;
 			(*y) += font->height;
+			print_cursor(font, framebuffer, x, y);
 		}
 		it++;
 	}
 }
 
+static inline uint8_t inb(uint16_t port) {
+	uint8_t ret;
+	asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
+	return ret;
+}
+
+unsigned char kbd_us[128] = {
+	0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
+	'\t', 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n',
+	0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', 0,
+	'\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*', 0, ' ',
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, '-', 0, 0, 0, '+', 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0
+};
+
+
+
 void kmain(void) {
-	uint8_t x = 0;
-	uint8_t y = 0;
+	int x = 0;
+	int y = 0;
 	if(LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
 		hcf();
 	}
@@ -137,9 +173,19 @@ void kmain(void) {
 
 	psf2_header_t *font = init_font();
 
-	for(int i = 0; i < 10; ++i) {
+	while(1) {
+		if (inb(0x64) & 1) {
+			uint8_t scancode = inb(0x60);
+			if(!(scancode & 0x80)) {
+				char c = kbd_us[scancode];
+				if (c>0) {
+					char str[2] = {c, '\0'};
 
-		kprintf("Hello world!\n", font, framebuffer, &x, &y);
+					kprintf(str, font, framebuffer, &x, &y);
+					print_cursor(font, framebuffer, &x, &y);
+				}
+			}
+		}
 	}
 
 	hcf();
