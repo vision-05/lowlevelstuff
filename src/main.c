@@ -106,7 +106,7 @@ void print_cursor(psf2_header_t *font, struct limine_framebuffer *framebuffer, i
 	for(uint32_t cy = font->height - 4; cy < font->height; ++cy) {
 		for(uint32_t cx = 0; cx < font->width; ++cx) {
 			volatile uint32_t *pixel = (uint32_t*)((uint8_t*)framebuffer->address + (*y+cy)*framebuffer->pitch + (*x+cx)*4);
-			*pixel = 0xff0000;
+			*pixel = 0xffffff;
 		}
 	}
 }
@@ -115,21 +115,37 @@ void kprintf(char* str, psf2_header_t *font, struct limine_framebuffer *framebuf
 	char* it = str;
 	while(*it) {
 		if(*it == '\n') {
+			*it = ' ';
+			draw_char(font, *it, *x, *y, 0xffffff, 0x000000, framebuffer); 
 			*x = 0;
 			*y += font->height;
+			it++;
+			continue;
 		}
 		if(*it == '\r') {
+			it++;
 			continue;
 		}
 		if(*it == '\b') {
-			*x -= font->width;
 			*it = ' ';
-			draw_char(font, *it, *x, *y, 0x0000ff, 0x00ff00, framebuffer);
-			*x -= font->width;
+			draw_char(font, *it, *x, *y, 0xffffff, 0x000000, framebuffer);
+			if(*x == 0) {
+				*x = 1000;
+				*y -= font->height;
+			}
+			else {	
+				*x -= font->width;
+			}
+			draw_char(font, *it, *x, *y, 0xffffff, 0x000000, framebuffer);
 			print_cursor(font, framebuffer, x, y);
+			it++;
 			continue;
 		}
-		draw_char(font, *it, *x, *y, 0x0000ff, 0x00ff00, framebuffer);
+		if(*it == 0) {
+			
+			break;
+		}
+		draw_char(font, *it, *x, *y, 0xffffff, 0x000000, framebuffer);
 		(*x) += font->width;
 		if (*x > 1000) {
 			*x = 0;
